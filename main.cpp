@@ -44,7 +44,7 @@ namespace
         {
             return "";
         }
-
+        // asa
         string content;
         string line;
         while (getline(in, line))
