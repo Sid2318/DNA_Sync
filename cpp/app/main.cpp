@@ -1,9 +1,10 @@
-#include "analysis.h"
-#include "codon.h"
-#include "dp_module.h"
-#include "huffman.h"
-#include "z_module.h"
+#include "../features/analysis/analysis.h"
+#include "../features/codon/codon.h"
+#include "../features/dp/dp_module.h"
+#include "../features/huffman/huffman.h"
+#include "../features/z/z_module.h"
 
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -16,10 +17,51 @@ using namespace std;
 
 namespace
 {
+    namespace fs = std::filesystem;
 
-    const string kDNAFile = "dna.txt";
-    const string kCodonFile = "codon.txt";
-    const string kOutputFile = "output.txt";
+    string resolveReadablePath(const vector<string> &candidates)
+    {
+        for (const string &candidate : candidates)
+        {
+            ifstream in(candidate);
+            if (in.is_open())
+            {
+                return candidate;
+            }
+        }
+
+        return candidates.empty() ? "" : candidates.front();
+    }
+
+    string resolveWritablePath(const vector<string> &candidates)
+    {
+        for (const string &candidate : candidates)
+        {
+            const fs::path path(candidate);
+            if (path.has_parent_path())
+            {
+                std::error_code ec;
+                fs::create_directories(path.parent_path(), ec);
+            }
+
+            ofstream out(candidate, ios::app);
+            if (out.is_open())
+            {
+                return candidate;
+            }
+        }
+
+        return "output.txt";
+    }
+
+    const string kDNAFile = resolveReadablePath(
+        {"cpp/data/dna.txt", "../cpp/data/dna.txt", "../../cpp/data/dna.txt", "../data/dna.txt", "data/dna.txt", "dna.txt"});
+
+    const string kCodonFile = resolveReadablePath(
+        {"cpp/data/codon.txt", "../cpp/data/codon.txt", "../../cpp/data/codon.txt", "../data/codon.txt", "data/codon.txt", "codon.txt"});
+
+    const string kOutputFile = resolveWritablePath(
+        {"cpp/logs/output.txt", "../cpp/logs/output.txt", "../../cpp/logs/output.txt", "../logs/output.txt", "logs/output.txt", "output.txt"});
 
     void initializeOutputFile()
     {
@@ -44,7 +86,7 @@ namespace
         {
             return "";
         }
-        // asa
+
         string content;
         string line;
         while (getline(in, line))
@@ -167,7 +209,7 @@ int main()
 
         if (choice == 1)
         {
-            cout << "\n1. Load from file (dna.txt)\n";
+            cout << "\n1. Load from file (" << kDNAFile << ")\n";
             cout << "2. Enter DNA manually\n";
             const int mode = readInt("Select input mode: ");
 

@@ -1,16 +1,42 @@
-1. cd server
-2. npm install
-3. Set `exePath` in `index.js` to point to your compiled C++ executable (e.g. `../dna_project/main.exe`)
-4. npm run dev
+# Server (Express API + Static Host)
 
-Production build & serve:
+## Development
 
-- Build frontend and start server in one step:
+1. `cd server`
+2. `npm install`
+3. Build the C++ executable once: `npm run build-cpp`
+4. Start API server: `npm run dev`
 
-	1. cd server
-	2. npm install
-	3. npm run start:prod
+By default, the server looks for the executable in these locations (in order):
 
-	This runs `npm ci` in the `frontend` folder, builds the static site into `frontend/dist`, and starts the Express server which serves the built assets and the API on port 4000.
+- `cpp/bin/dna_system.exe`
+- `cpp/bin/dna_system`
+- `cpp/bin/main.exe`
+- `cpp/bin/main`
+- `main.exe`
+- `main`
 
-POST /api/run expects JSON: `{ input: string, options: object }` and will spawn the executable, send `input` to stdin, and return stdout.
+Override with environment variable:
+
+- `DNA_EXECUTABLE_PATH` (absolute path or path relative to project root)
+
+## Production-like Start
+
+Run everything from the server folder:
+
+1. `npm install`
+2. `npm run start:prod`
+
+`start:prod` performs:
+
+- C++ build (`../cpp/build.ps1`)
+- Frontend build (`../frontend`)
+- Server start on port `4000` (or `PORT` env var)
+
+## API
+
+- Endpoint: `POST /api/run`
+- Body: `{ "input": string, "options": object | string }`
+- Response: `{ "output": string }`
+
+The server streams the input into the C++ process stdin and returns stdout. Output size and runtime are guarded to avoid runaway processes.
