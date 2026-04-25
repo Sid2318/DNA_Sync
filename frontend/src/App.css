@@ -739,6 +739,8 @@ input:focus {
     rgba(14, 138, 141, 0.08);
   box-shadow: 0 14px 34px rgba(14, 138, 141, 0.18);
   padding: 8px;
+  width: max-content;
+  max-width: none;
 }
 
 .z-scanner::after {
@@ -760,6 +762,11 @@ input:focus {
   letter-spacing: 0.08em;
   margin-bottom: 6px;
   text-transform: uppercase;
+}
+
+.z-scanner > div {
+  flex-wrap: nowrap;
+  width: max-content;
 }
 
 .dna-track {
