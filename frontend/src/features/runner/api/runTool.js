@@ -57,8 +57,12 @@ export function buildStdinScript(formData) {
   }
 
   if (tool === "analysis") {
-    const additionalCount = toNonNegativeInt(formData?.analysisExtraCount, 0);
-    lines.push(String(additionalCount));
+    const analysisSequences = Array.isArray(formData?.analysisSequences)
+      ? formData.analysisSequences.map(normalizeDNAInput).filter(Boolean)
+      : [];
+
+    lines.push(String(analysisSequences.length));
+    lines.push(...analysisSequences);
   }
 
   lines.push("7");
