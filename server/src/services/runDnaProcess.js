@@ -37,9 +37,21 @@ function normalizeOptions(options) {
     return "";
   }
 
-  const optionString =
-    typeof options === "string" ? options : JSON.stringify(options);
-  return `\n${optionString}\n`;
+  if (typeof options === "string") {
+    const trimmed = options.trim();
+    return trimmed ? `\n${trimmed}\n` : "";
+  }
+
+  // Only forward explicit stdin scripts, not arbitrary option objects.
+  if (
+    typeof options === "object" &&
+    typeof options.stdinScript === "string" &&
+    options.stdinScript.trim()
+  ) {
+    return `\n${options.stdinScript.trim()}\n`;
+  }
+
+  return "";
 }
 
 function buildTruncatedError(reason, stdoutBuffers, stderrBuffers) {
