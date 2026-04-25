@@ -11,9 +11,6 @@ const RESULT_COPY = Object.freeze({
 });
 
 export default function ResultCard({ result }) {
-  const hasOutput = Boolean(
-    result.cleanedOutput && result.cleanedOutput.trim(),
-  );
   const subtitle = RESULT_COPY[result.tool] || "Interactive result";
 
   return (
@@ -34,13 +31,6 @@ export default function ResultCard({ result }) {
       </div>
 
       <FeatureVisualizer result={result} />
-
-      {hasOutput ? (
-        <details className="text-summary">
-          <summary>View cleaned terminal summary</summary>
-          <pre className="clean-output">{result.cleanedOutput}</pre>
-        </details>
-      ) : null}
     </motion.section>
   );
 }

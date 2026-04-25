@@ -191,6 +191,8 @@ function ZVisualization({ result }) {
   const patternLength = Math.max(1, pattern.length);
   const parsed = parseZOutput(result.cleanedOutput);
   const visibleDNA = dna.slice(0, 140);
+  const scanDNA = visibleDNA.slice(0, Math.min(36, visibleDNA.length));
+  const scanDistance = Math.max(0, (scanDNA.length - patternLength) * 38);
   const mark = new Array(visibleDNA.length).fill("none");
   const candidateOnly = parsed.candidates.filter((idx) => !parsed.exact.includes(idx));
 
@@ -231,6 +233,49 @@ function ZVisualization({ result }) {
           {pattern.split("").map((base, index) => (
             <BasePill key={`${base}-${index}`} base={base} active />
           ))}
+        </div>
+      </div>
+
+      <div className="z-scan-stage" aria-label="Animated Z pattern matching scan">
+        <div className="z-scan-copy">
+          <strong>Z scan animation</strong>
+          <span>The pattern window slides across the DNA and lights up reported match zones.</span>
+        </div>
+
+        <div
+          className="z-scan-rail"
+          style={{ width: `${Math.max(360, scanDNA.length * 38)}px` }}
+        >
+          <div className="z-scan-bases">
+            {scanDNA.split("").map((base, idx) => (
+              <span
+                key={`scan-${base}-${idx}`}
+                className={mark[idx] !== "none" ? mark[idx] : ""}
+              >
+                {base}
+              </span>
+            ))}
+          </div>
+
+          <motion.div
+            className="z-scanner"
+            initial={{ x: 0 }}
+            animate={{ x: scanDistance }}
+            transition={{
+              duration: Math.max(2.2, scanDNA.length * 0.08),
+              repeat: Infinity,
+              repeatType: "reverse",
+              ease: "easeInOut",
+            }}
+            style={{ width: `${Math.max(42, patternLength * 38)}px` }}
+          >
+            <small>Compare pattern</small>
+            <div>
+              {pattern.split("").map((base, index) => (
+                <BasePill key={`scan-pattern-${base}-${index}`} base={base} active />
+              ))}
+            </div>
+          </motion.div>
         </div>
       </div>
 

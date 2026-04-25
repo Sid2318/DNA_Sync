@@ -73,6 +73,11 @@ export default function App() {
     }
   };
 
+  const handleFeatureChange = () => {
+    setError(null);
+    setResult(null);
+  };
+
   return (
     <div className="app-shell">
       <div className="ambient ambient-one" />
@@ -124,7 +129,11 @@ export default function App() {
         </motion.header>
 
         <main>
-          <DNAInput onRun={handleRun} loading={loading} />
+          <DNAInput
+            onRun={handleRun}
+            onFeatureChange={handleFeatureChange}
+            loading={loading}
+          />
 
           <AnimatePresence mode="wait">
             {loading && <LoadingLab key="loading" />}

@@ -614,6 +614,7 @@ input:focus {
 }
 
 .pattern-lens,
+.z-scan-stage,
 .dna-track,
 .alignment-stack,
 .mutation-card,
@@ -643,6 +644,7 @@ input:focus {
 }
 
 .pattern-lens > div,
+.z-scanner > div,
 .mutation-compare > div,
 .codon-triplet {
   display: flex;
@@ -671,6 +673,93 @@ input:focus {
 
 .base-pill.muted {
   opacity: 0.45;
+}
+
+.z-scan-stage {
+  padding: 14px;
+  overflow-x: auto;
+}
+
+.z-scan-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.z-scan-copy span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.z-scan-rail {
+  min-height: 118px;
+  position: relative;
+}
+
+.z-scan-bases {
+  display: flex;
+  gap: 8px;
+  padding-top: 54px;
+}
+
+.z-scan-bases span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 900;
+}
+
+.z-scan-bases span.candidate {
+  background: rgba(249, 115, 22, 0.16);
+  border-color: rgba(249, 115, 22, 0.46);
+}
+
+.z-scan-bases span.exact {
+  background: rgba(14, 138, 141, 0.18);
+  border-color: rgba(14, 138, 141, 0.52);
+}
+
+.z-scanner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid rgba(14, 138, 141, 0.44);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.72)),
+    rgba(14, 138, 141, 0.08);
+  box-shadow: 0 14px 34px rgba(14, 138, 141, 0.18);
+  padding: 8px;
+}
+
+.z-scanner::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 1px);
+  width: 2px;
+  height: 50px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(14, 138, 141, 0.7), transparent);
+}
+
+.z-scanner small {
+  display: block;
+  color: var(--teal-dark);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 
 .dna-track {

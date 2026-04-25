@@ -55,7 +55,7 @@ function getBaseStats(dna) {
   return { clean, counts, gc };
 }
 
-export default function DNAInput({ onRun, loading }) {
+export default function DNAInput({ onRun, onFeatureChange, loading }) {
   const [dna, setDna] = useState(FEATURE_DETAILS.analysis.sample);
   const [tool, setTool] = useState("analysis");
   const [pattern, setPattern] = useState("ACG");
@@ -84,6 +84,9 @@ export default function DNAInput({ onRun, loading }) {
   };
 
   const selectFeature = (value) => {
+    if (value !== tool) {
+      onFeatureChange?.(value);
+    }
     setTool(value);
     setFormError("");
   };
