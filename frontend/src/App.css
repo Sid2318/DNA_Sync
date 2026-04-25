@@ -881,6 +881,16 @@ input:focus {
   gap: 10px;
 }
 
+.translation-note {
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  border-radius: 18px;
+  background: rgba(249, 115, 22, 0.1);
+  color: #8a3700;
+  padding: 12px 14px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .codon-step {
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -900,6 +910,20 @@ input:focus {
   height: 100px;
   border-radius: 999px;
   background: rgba(14, 138, 141, 0.08);
+}
+
+.codon-step.stop {
+  border-color: rgba(197, 50, 84, 0.34);
+  background: rgba(197, 50, 84, 0.08);
+}
+
+.codon-step.stop strong {
+  color: var(--danger);
+}
+
+.codon-step.skipped {
+  opacity: 0.66;
+  background: rgba(18, 34, 47, 0.04);
 }
 
 .codon-step strong {
