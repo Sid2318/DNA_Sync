@@ -79,6 +79,15 @@ const PROMPT_PATTERNS = [
   /How many additional sequences for similarity matrix\?\s*/g,
   /Reuse last pattern \([^\n]*?\)\? \(y\/n\):\s*/g,
   /Enter sequence \d+:\s*/g,
+  /Invalid number\. Try again\.\s*/g,
+];
+
+const NON_ESSENTIAL_LINE_PATTERNS = [
+  /^\s*1\. Load from file \([^\n]*\)\s*$/gm,
+  /^\s*2\. Enter DNA manually\s*$/gm,
+  /^\s*DNA loaded successfully \(length = \d+\)\.\s*$/gm,
+  /^\s*\[Load DNA\]\s*$/gm,
+  /^\s*Load DNA first \(option 1\)\.\s*$/gm,
 ];
 
 export function cleanTerminalOutput(rawOutput) {
@@ -90,9 +99,18 @@ export function cleanTerminalOutput(rawOutput) {
     text = text.replace(pattern, "");
   }
 
+  for (const pattern of NON_ESSENTIAL_LINE_PATTERNS) {
+    text = text.replace(pattern, "");
+  }
+
   text = text.replace(/Input stream closed\. Exiting\.[^\n]*/g, "");
   text = text.replace(/Exiting\. Output log saved to [^\n]*/g, "");
-  text = text.replace(/\n{3,}/g, "\n\n").trim();
+  text = text
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 
   return text || "Completed successfully.";
 }

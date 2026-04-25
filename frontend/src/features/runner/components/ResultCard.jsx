@@ -13,13 +13,8 @@ export default function ResultCard({ result }) {
         <span className="status-chip">Ready</span>
       </div>
 
-      <p className="result-note">Cleaned output</p>
+      <p className="result-note">Output</p>
       <pre className="clean-output">{result.cleanedOutput}</pre>
-
-      <details className="raw-output">
-        <summary>Show raw terminal output</summary>
-        <pre>{result.rawOutput}</pre>
-      </details>
     </motion.section>
   );
 }

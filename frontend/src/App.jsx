@@ -27,7 +27,6 @@ export default function App() {
         tool: formData.tool,
         toolLabel: TOOL_LABELS[formData.tool] || formData.tool,
         cleanedOutput: cleanTerminalOutput(data.output),
-        rawOutput: data.output || "",
       });
     } catch (err) {
       setError(err?.response?.data?.error || err.message);
