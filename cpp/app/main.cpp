@@ -230,42 +230,42 @@ int main()
                 cout << "2. Enter DNA manually\n";
                 const int mode = readInt("Select input mode: ");
 
-            string rawDNA;
-            if (mode == 1)
-            {
-                rawDNA = readDNAFromFile(kDNAFile);
-                if (rawDNA.empty())
+                string rawDNA;
+                if (mode == 1)
                 {
-                    cout << "Failed to read DNA from file: " << kDNAFile << "\n";
+                    rawDNA = readDNAFromFile(kDNAFile);
+                    if (rawDNA.empty())
+                    {
+                        cout << "Failed to read DNA from file: " << kDNAFile << "\n";
+                        continue;
+                    }
+                }
+                else if (mode == 2)
+                {
+                    rawDNA = readLine("Enter DNA sequence: ");
+                }
+                else
+                {
+                    cout << "Invalid input mode.\n";
                     continue;
                 }
-            }
-            else if (mode == 2)
-            {
-                rawDNA = readLine("Enter DNA sequence: ");
-            }
-            else
-            {
-                cout << "Invalid input mode.\n";
-                continue;
-            }
 
-            const string normalized = normalizeDNA(rawDNA);
-            string error;
-            if (!validateDNA(normalized, error))
-            {
-                cout << "Invalid DNA: " << error << "\n";
-                continue;
+                const string normalized = normalizeDNA(rawDNA);
+                string error;
+                if (!validateDNA(normalized, error))
+                {
+                    cout << "Invalid DNA: " << error << "\n";
+                    continue;
+                }
+
+                dna = normalized;
+                cout << "DNA loaded successfully (length = " << dna.size() << ").\n";
+
+                ostringstream log;
+                log << "[Load DNA]\n";
+                log << "DNA: " << dna << "\n";
+                appendToOutput(log.str());
             }
-
-            dna = normalized;
-            cout << "DNA loaded successfully (length = " << dna.size() << ").\n";
-
-            ostringstream log;
-            log << "[Load DNA]\n";
-            log << "DNA: " << dna << "\n";
-            appendToOutput(log.str());
-        }
             else if (choice == 2)
             {
                 if (dna.empty())

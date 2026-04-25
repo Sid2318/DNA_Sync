@@ -2,20 +2,33 @@ import React, { useState } from "react";
 import DNAInput from "./features/runner/components/DNAInput";
 import ResultCard from "./features/runner/components/ResultCard";
 import { motion } from "framer-motion";
-import { runTool } from "./features/runner/api/runTool";
+import {
+  buildStdinScript,
+  cleanTerminalOutput,
+  runTool,
+  TOOL_LABELS,
+} from "./features/runner/api/runTool";
 
 export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const handleRun = async (input, options) => {
+  const handleRun = async (formData) => {
     setLoading(true);
     setError(null);
     setResult(null);
+
     try {
-      const data = await runTool(input, options);
-      setResult(data);
+      const stdinScript = buildStdinScript(formData);
+      const data = await runTool(stdinScript);
+
+      setResult({
+        tool: formData.tool,
+        toolLabel: TOOL_LABELS[formData.tool] || formData.tool,
+        cleanedOutput: cleanTerminalOutput(data.output),
+        rawOutput: data.output || "",
+      });
     } catch (err) {
       setError(err?.response?.data?.error || err.message);
     } finally {
@@ -30,8 +43,11 @@ export default function App() {
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <h1>DNA Tools — Interactive UI</h1>
-        <p>Run analysis, codon, DP, Huffman and more</p>
+        <h1>DNA Workbench</h1>
+        <p>
+          Pick a feature, run it cleanly, and read results without terminal
+          clutter.
+        </p>
       </motion.header>
 
       <main>
@@ -49,7 +65,7 @@ export default function App() {
         {result && <ResultCard result={result} />}
       </main>
 
-      <footer>Built with React • Animations by Framer Motion</footer>
+      <footer>React UI with streamlined DNA feature runs</footer>
     </div>
   );
 }
