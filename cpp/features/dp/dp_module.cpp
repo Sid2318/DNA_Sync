@@ -1,129 +1,91 @@
 #include "dp_module.h"
-
-#include <algorithm>
-#include <cstdlib>
-#include <unordered_set>
+#include <bits/stdc++.h>
 
 using namespace std;
 
-int editDistance(const string &a, const string &b)
+static vector<vector<int>> makeDP(const string &a, const string &b)
 {
-    const int m = static_cast<int>(a.size());
-    const int n = static_cast<int>(b.size());
-
+    int m = a.size(), n = b.size();
     vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
 
-    for (int i = 0; i <= m; ++i)
-    {
-        dp[i][0] = i;
-    }
-    for (int j = 0; j <= n; ++j)
-    {
-        dp[0][j] = j;
-    }
+    for (int i = 0; i <= m; i++) dp[i][0] = i;
+    for (int j = 0; j <= n; j++) dp[0][j] = j;
 
-    // Levenshtein DP transition: min(insert, delete, replace/match).
-    for (int i = 1; i <= m; ++i)
+    for (int i = 1; i <= m; i++)
     {
-        for (int j = 1; j <= n; ++j)
+        for (int j = 1; j <= n; j++)
         {
-            const int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
-            dp[i][j] = min({dp[i - 1][j] + 1,
-                            dp[i][j - 1] + 1,
-                            dp[i - 1][j - 1] + cost});
+            int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+            dp[i][j] = min({
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost
+            });
         }
     }
 
-    return dp[m][n];
+    return dp;
+}
+
+int editDistance(const string &a, const string &b)
+{
+    vector<vector<int>> dp = makeDP(a, b);
+    return dp[a.size()][b.size()];
 }
 
 vector<int> getMismatchPositions(const string &a, const string &b)
 {
-    vector<int> positions;
+    vector<int> pos;
 
     if (a.size() == b.size())
     {
-        for (int i = 0; i < static_cast<int>(a.size()); ++i)
+        for (int i = 0; i < (int)a.size(); i++)
         {
             if (a[i] != b[i])
             {
-                positions.push_back(i);
+                pos.push_back(i);
             }
         }
-        return positions;
+        return pos;
     }
 
-    const int m = static_cast<int>(a.size());
-    const int n = static_cast<int>(b.size());
-    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
-
-    for (int i = 0; i <= m; ++i)
-    {
-        dp[i][0] = i;
-    }
-    for (int j = 0; j <= n; ++j)
-    {
-        dp[0][j] = j;
-    }
-
-    for (int i = 1; i <= m; ++i)
-    {
-        for (int j = 1; j <= n; ++j)
-        {
-            const int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
-            dp[i][j] = min({dp[i - 1][j] + 1,
-                            dp[i][j - 1] + 1,
-                            dp[i - 1][j - 1] + cost});
-        }
-    }
-
-    int i = m;
-    int j = n;
+    vector<vector<int>> dp = makeDP(a, b);
+    int i = a.size();
+    int j = b.size();
 
     while (i > 0 || j > 0)
     {
         if (i > 0 && j > 0 && a[i - 1] == b[j - 1])
         {
-            --i;
-            --j;
-            continue;
+            i--;
+            j--;
         }
-
-        if (i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + 1)
+        else if (i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + 1)
         {
-            positions.push_back(i - 1);
-            --i;
-            --j;
-            continue;
+            pos.push_back(i - 1);
+            i--;
+            j--;
         }
-
-        if (i > 0 && dp[i][j] == dp[i - 1][j] + 1)
+        else if (i > 0 && dp[i][j] == dp[i - 1][j] + 1)
         {
-            positions.push_back(i - 1);
-            --i;
-            continue;
+            pos.push_back(i - 1);
+            i--;
         }
-
-        if (j > 0 && dp[i][j] == dp[i][j - 1] + 1)
+        else if (j > 0 && dp[i][j] == dp[i][j - 1] + 1)
         {
-            positions.push_back(i);
-            --j;
-            continue;
-        }
-
-        if (i > 0)
-        {
-            --i;
+            pos.push_back(i);
+            j--;
         }
         else
         {
-            --j;
+            if (i > 0) i--;
+            else j--;
         }
     }
 
-    sort(positions.begin(), positions.end());
-    positions.erase(unique(positions.begin(), positions.end()), positions.end());
-    return positions;
+    sort(pos.begin(), pos.end());
+    pos.erase(unique(pos.begin(), pos.end()), pos.end());
+    return pos;
 }
 
 vector<MutationResult> verifyCandidatesWithDP(
@@ -132,47 +94,41 @@ vector<MutationResult> verifyCandidatesWithDP(
     const vector<int> &candidateIndices,
     int maxMismatches)
 {
-    vector<MutationResult> verified;
+    vector<MutationResult> ans;
     if (pattern.empty() || text.empty() || pattern.size() > text.size())
     {
-        return verified;
+        return ans;
     }
 
+    int m = pattern.size();
     maxMismatches = max(0, maxMismatches);
-    const int m = static_cast<int>(pattern.size());
-
-    unordered_set<int> seen;
+    set<int> used;
 
     for (int idx : candidateIndices)
     {
-        if (idx < 0 || idx + m > static_cast<int>(text.size()))
+        if (used.count(idx) || idx < 0 || idx + m > (int)text.size())
         {
             continue;
         }
-        if (seen.find(idx) != seen.end())
-        {
-            continue;
-        }
-        seen.insert(idx);
+        used.insert(idx);
 
-        const string window = text.substr(idx, m);
-        const int dist = editDistance(pattern, window);
+        string window = text.substr(idx, m);
+        int dist = editDistance(pattern, window);
+
         if (dist <= maxMismatches)
         {
-            MutationResult result;
-            result.index = idx;
-            result.distance = dist;
-            result.mismatchPositions = getMismatchPositions(pattern, window);
-            verified.push_back(result);
+            MutationResult cur;
+            cur.index = idx;
+            cur.distance = dist;
+            cur.mismatchPositions = getMismatchPositions(pattern, window);
+            ans.push_back(cur);
         }
     }
 
-    sort(verified.begin(), verified.end(), [](const MutationResult &a, const MutationResult &b)
-         {
-        if (a.distance != b.distance) {
-            return a.distance < b.distance;
-        }
-        return a.index < b.index; });
+    sort(ans.begin(), ans.end(), [](const MutationResult &a, const MutationResult &b) {
+        if (a.distance != b.distance) return a.distance < b.distance;
+        return a.index < b.index;
+    });
 
-    return verified;
+    return ans;
 }

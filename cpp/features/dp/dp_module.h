@@ -1,15 +1,13 @@
 #ifndef DP_MODULE_H
 #define DP_MODULE_H
 
-#include <string>
-#include <vector>
-
+#include <bits/stdc++.h>
 using namespace std;
 
 struct MutationResult
 {
-    int index;
-    int distance;
+    int index = 0;
+    int distance = 0;
     vector<int> mismatchPositions;
 };
 

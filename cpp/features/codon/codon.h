@@ -1,10 +1,7 @@
 #ifndef CODON_H
 #define CODON_H
 
-#include <string>
-#include <unordered_map>
-#include <vector>
-
+#include <bits/stdc++.h>
 using namespace std;
 
 using CodonTable = unordered_map<string, string>;

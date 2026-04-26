@@ -1,25 +1,19 @@
 #include "analysis.h"
-
-#include <cmath>
-#include <cctype>
-#include <iomanip>
+#include <bits/stdc++.h>
 
 using namespace std;
 
 string normalizeDNA(const string &dna)
 {
-    string normalized;
-    normalized.reserve(dna.size());
-
-    for (unsigned char c : dna)
+    string res;
+    for (char ch : dna)
     {
-        if (!isspace(c))
+        if (!isspace((unsigned char)ch))
         {
-            normalized.push_back(static_cast<char>(toupper(c)));
+            res.push_back((char)toupper((unsigned char)ch));
         }
     }
-
-    return normalized;
+    return res;
 }
 
 bool validateDNA(const string &dna, string &errorMessage)
@@ -30,17 +24,17 @@ bool validateDNA(const string &dna, string &errorMessage)
         return false;
     }
 
-    for (int i = 0; i < static_cast<int>(dna.size()); ++i)
+    for (int i = 0; i < (int)dna.size(); i++)
     {
-        const char c = dna[i];
-        if (c != 'A' && c != 'C' && c != 'G' && c != 'T')
+        char ch = dna[i];
+        if (ch != 'A' && ch != 'C' && ch != 'G' && ch != 'T')
         {
-            errorMessage = "Invalid DNA character found at index " + to_string(i) + ": " + c;
+            errorMessage = "Invalid DNA character found at index " + to_string(i) + ": " + ch;
             return false;
         }
     }
 
-    errorMessage.clear();
+    errorMessage = "";
     return true;
 }
 
@@ -51,45 +45,45 @@ double calculateGCContent(const string &dna)
         return 0.0;
     }
 
-    int gcCount = 0;
-    for (char c : dna)
+    int gc = 0;
+    for (char ch : dna)
     {
-        if (c == 'G' || c == 'C')
+        if (ch == 'G' || ch == 'C')
         {
-            ++gcCount;
+            gc++;
         }
     }
 
-    return (static_cast<double>(gcCount) * 100.0) / static_cast<double>(dna.size());
+    return (gc * 100.0) / dna.size();
 }
 
 int mismatchCount(const string &a, const string &b)
 {
-    const int common = static_cast<int>(min(a.size(), b.size()));
-    int mismatches = 0;
+    int common = min(a.size(), b.size());
+    int ans = 0;
 
-    for (int i = 0; i < common; ++i)
+    for (int i = 0; i < common; i++)
     {
         if (a[i] != b[i])
         {
-            ++mismatches;
+            ans++;
         }
     }
 
-    mismatches += abs(static_cast<int>(a.size()) - static_cast<int>(b.size()));
-    return mismatches;
+    ans += abs((int)a.size() - (int)b.size());
+    return ans;
 }
 
 vector<vector<int>> buildSimilarityMatrix(const vector<string> &sequences)
 {
-    const int n = static_cast<int>(sequences.size());
+    int n = sequences.size();
     vector<vector<int>> matrix(n, vector<int>(n, 0));
 
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < n; i++)
     {
-        for (int j = i; j < n; ++j)
+        for (int j = i; j < n; j++)
         {
-            const int d = mismatchCount(sequences[i], sequences[j]);
+            int d = mismatchCount(sequences[i], sequences[j]);
             matrix[i][j] = d;
             matrix[j][i] = d;
         }
@@ -106,20 +100,20 @@ void printSimilarityMatrix(const vector<vector<int>> &matrix, ostream &out)
         return;
     }
 
+    int n = matrix.size();
     out << "Similarity Matrix (mismatch count):\n";
     out << setw(8) << " ";
 
-    const int n = static_cast<int>(matrix.size());
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < n; i++)
     {
         out << setw(8) << ("S" + to_string(i));
     }
     out << "\n";
 
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < n; i++)
     {
         out << setw(8) << ("S" + to_string(i));
-        for (int j = 0; j < n; ++j)
+        for (int j = 0; j < n; j++)
         {
             out << setw(8) << matrix[i][j];
         }

@@ -1,9 +1,7 @@
 #ifndef Z_MODULE_H
 #define Z_MODULE_H
 
-#include <string>
-#include <vector>
-
+#include <bits/stdc++.h>
 using namespace std;
 
 vector<int> computeZArray(const string &s);

@@ -1,76 +1,60 @@
 #include "codon.h"
-
-#include <algorithm>
-#include <cctype>
-#include <fstream>
-#include <sstream>
+#include <bits/stdc++.h>
 
 using namespace std;
 
-namespace
+static string upperNoSpaces(const string &s)
 {
-
-    string toUpperAndTrimDNA(const string &s)
+    string res;
+    for (char ch : s)
     {
-        string out;
-        out.reserve(s.size());
-
-        for (unsigned char c : s)
+        if (!isspace((unsigned char)ch))
         {
-            if (!isspace(c))
-            {
-                out.push_back(static_cast<char>(toupper(c)));
-            }
+            res.push_back((char)toupper((unsigned char)ch));
         }
-
-        return out;
     }
+    return res;
+}
 
-    string toUpperWord(const string &s)
+static string upperWord(string s)
+{
+    for (char &ch : s)
     {
-        string out = s;
-        for (char &ch : out)
-        {
-            ch = static_cast<char>(toupper(static_cast<unsigned char>(ch)));
-        }
-        return out;
+        ch = (char)toupper((unsigned char)ch);
     }
-
-} // namespace
+    return s;
+}
 
 bool loadCodonTable(const string &filePath, CodonTable &table)
 {
-    ifstream in(filePath);
-    if (!in.is_open())
+    ifstream fin(filePath);
+    if (!fin)
     {
         return false;
     }
 
     table.clear();
+    string codon, amino;
     string line;
 
-    while (getline(in, line))
+    while (getline(fin, line))
     {
         if (line.empty() || line[0] == '#')
         {
             continue;
         }
 
-        istringstream iss(line);
-        string codon;
-        string amino;
-        if (!(iss >> codon >> amino))
+        stringstream ss(line);
+        if (!(ss >> codon >> amino))
         {
             continue;
         }
 
-        codon = toUpperWord(codon);
-        if (codon.size() != 3)
+        codon = upperWord(codon);
+        if ((int)codon.size() == 3)
         {
-            continue;
+            table[codon] = amino;
         }
-
-        table[codon] = amino;
     }
 
     return !table.empty();
@@ -84,24 +68,22 @@ vector<string> translateDNAToProtein(const string &dna, const CodonTable &table)
         return protein;
     }
 
-    const string cleanDNA = toUpperAndTrimDNA(dna);
+    string cleanDNA = upperNoSpaces(dna);
 
-    // Translation proceeds codon-by-codon and stops when a STOP codon is seen.
-    for (int i = 0; i + 2 < static_cast<int>(cleanDNA.size()); i += 3)
+    for (int i = 0; i + 2 < (int)cleanDNA.size(); i += 3)
     {
-        const string codon = cleanDNA.substr(i, 3);
-        auto it = table.find(codon);
+        string codon = cleanDNA.substr(i, 3);
 
-        if (it == table.end())
+        if (!table.count(codon))
         {
             protein.push_back("Unknown");
             continue;
         }
 
-        const string amino = it->second;
-        const string upperAmino = toUpperWord(amino);
+        string amino = table.at(codon);
+        string check = upperWord(amino);
 
-        if (upperAmino == "STOP" || upperAmino == "*")
+        if (check == "STOP" || check == "*")
         {
             break;
         }
@@ -119,15 +101,10 @@ string proteinToString(const vector<string> &proteinSequence)
         return "(empty)";
     }
 
-    string result;
-    for (int i = 0; i < static_cast<int>(proteinSequence.size()); ++i)
+    string ans = proteinSequence[0];
+    for (int i = 1; i < (int)proteinSequence.size(); i++)
     {
-        if (i > 0)
-        {
-            result += " ";
-        }
-        result += proteinSequence[i];
+        ans += " " + proteinSequence[i];
     }
-
-    return result;
+    return ans;
 }

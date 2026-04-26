@@ -1,10 +1,7 @@
 #ifndef ANALYSIS_H
 #define ANALYSIS_H
 
-#include <ostream>
-#include <string>
-#include <vector>
-
+#include <bits/stdc++.h>
 using namespace std;
 
 string normalizeDNA(const string &dna);

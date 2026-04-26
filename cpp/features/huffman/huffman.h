@@ -1,10 +1,7 @@
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 
-#include <ostream>
-#include <string>
-#include <unordered_map>
-
+#include <bits/stdc++.h>
 using namespace std;
 
 struct HuffmanResult

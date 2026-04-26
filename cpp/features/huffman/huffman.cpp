@@ -1,70 +1,67 @@
 #include "huffman.h"
-
-#include <algorithm>
-#include <iomanip>
-#include <queue>
-#include <vector>
+#include <bits/stdc++.h>
 
 using namespace std;
 
-namespace
+struct Node
 {
+    char ch;
+    int freq;
+    Node *left;
+    Node *right;
 
-    struct HuffmanNode
+    Node(char c, int f)
     {
-        char ch;
-        int freq;
-        HuffmanNode *left;
-        HuffmanNode *right;
-
-        HuffmanNode(char c, int f) : ch(c), freq(f), left(nullptr), right(nullptr) {}
-        HuffmanNode(HuffmanNode *l, HuffmanNode *r)
-            : ch('\0'), freq((l ? l->freq : 0) + (r ? r->freq : 0)), left(l), right(r) {}
-
-        bool isLeaf() const
-        {
-            return left == nullptr && right == nullptr;
-        }
-    };
-
-    struct CompareNode
-    {
-        bool operator()(const HuffmanNode *a, const HuffmanNode *b) const
-        {
-            return a->freq > b->freq;
-        }
-    };
-
-    void generateCodes(const HuffmanNode *node, const string &prefix, unordered_map<char, string> &codes)
-    {
-        if (node == nullptr)
-        {
-            return;
-        }
-
-        if (node->isLeaf())
-        {
-            codes[node->ch] = prefix.empty() ? "0" : prefix;
-            return;
-        }
-
-        generateCodes(node->left, prefix + "0", codes);
-        generateCodes(node->right, prefix + "1", codes);
+        ch = c;
+        freq = f;
+        left = right = nullptr;
     }
 
-    void deleteTree(HuffmanNode *node)
+    Node(Node *a, Node *b)
     {
-        if (node == nullptr)
-        {
-            return;
-        }
+        ch = 0;
+        freq = a->freq + b->freq;
+        left = a;
+        right = b;
+    }
+};
 
-        deleteTree(node->left);
-        deleteTree(node->right);
-        delete node;
+struct CompareNode
+{
+    bool operator()(Node *a, Node *b)
+    {
+        return a->freq > b->freq;
+    }
+};
+
+static void makeCodes(Node *root, string code, unordered_map<char, string> &codes)
+{
+    if (root == nullptr)
+    {
+        return;
     }
 
-} // namespace
+    if (root->left == nullptr && root->right == nullptr)
+    {
+        codes[root->ch] = code.empty() ? "0" : code;
+        return;
+    }
+
+    makeCodes(root->left, code + "0", codes);
+    makeCodes(root->right, code + "1", codes);
+}
+
+static void freeTree(Node *root)
+{
+    if (root == nullptr)
+    {
+        return;
+    }
+
+    freeTree(root->left);
+    freeTree(root->right);
+    delete root;
+}
 
 HuffmanResult compressDNAHuffman(const string &dna)
 {
@@ -74,36 +71,35 @@ HuffmanResult compressDNAHuffman(const string &dna)
         return result;
     }
 
-    for (char c : dna)
+    for (char ch : dna)
     {
-        result.frequencies[c]++;
+        result.frequencies[ch]++;
     }
 
-    priority_queue<HuffmanNode *, vector<HuffmanNode *>, CompareNode> pq;
-    for (const auto &entry : result.frequencies)
+    priority_queue<Node *, vector<Node *>, CompareNode> pq;
+    for (auto entry : result.frequencies)
     {
-        pq.push(new HuffmanNode(entry.first, entry.second));
+        pq.push(new Node(entry.first, entry.second));
     }
 
-    // Build Huffman tree by repeatedly merging the two lowest-frequency nodes.
     while (pq.size() > 1)
     {
-        HuffmanNode *left = pq.top();
+        Node *a = pq.top();
         pq.pop();
-        HuffmanNode *right = pq.top();
+        Node *b = pq.top();
         pq.pop();
-        pq.push(new HuffmanNode(left, right));
+        pq.push(new Node(a, b));
     }
 
-    HuffmanNode *root = pq.top();
-    generateCodes(root, "", result.codes);
+    Node *root = pq.top();
+    makeCodes(root, "", result.codes);
 
-    for (char c : dna)
+    for (char ch : dna)
     {
-        result.encodedDNA += result.codes[c];
+        result.encodedDNA += result.codes[ch];
     }
 
-    deleteTree(root);
+    freeTree(root);
     return result;
 }
 
@@ -115,34 +111,32 @@ void printHuffmanReport(const HuffmanResult &result, ostream &out)
         return;
     }
 
-    vector<pair<char, string>> sortedCodes(result.codes.begin(), result.codes.end());
-    sort(sortedCodes.begin(), sortedCodes.end(), [](const auto &a, const auto &b)
-         { return a.first < b.first; });
+    vector<pair<char, string>> codes(result.codes.begin(), result.codes.end());
+    sort(codes.begin(), codes.end());
 
     out << "Huffman Codes:\n";
-    for (const auto &entry : sortedCodes)
+    for (auto entry : codes)
     {
         out << entry.first << " -> " << entry.second << "\n";
     }
 
-    out << "Encoded DNA:\n"
-        << result.encodedDNA << "\n";
+    out << "Encoded DNA:\n" << result.encodedDNA << "\n";
 
     int symbols = 0;
-    for (const auto &entry : result.frequencies)
+    for (auto entry : result.frequencies)
     {
         symbols += entry.second;
     }
 
-    const int asciiBits = symbols * 8;
-    const int compressedBits = static_cast<int>(result.encodedDNA.size());
+    int asciiBits = symbols * 8;
+    int compressedBits = result.encodedDNA.size();
 
     out << "Original size (ASCII bits): " << asciiBits << "\n";
     out << "Compressed size (Huffman bits): " << compressedBits << "\n";
 
     if (asciiBits > 0)
     {
-        const double savings = (1.0 - static_cast<double>(compressedBits) / static_cast<double>(asciiBits)) * 100.0;
-        out << "Savings vs ASCII: " << fixed << setprecision(2) << savings << "%\n";
+        double saved = (1.0 - (double)compressedBits / asciiBits) * 100.0;
+        out << "Savings vs ASCII: " << fixed << setprecision(2) << saved << "%\n";
     }
 }

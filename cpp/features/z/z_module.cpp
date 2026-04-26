@@ -1,28 +1,26 @@
 #include "z_module.h"
-
-#include <algorithm>
+#include <bits/stdc++.h>
 
 using namespace std;
 
 vector<int> computeZArray(const string &s)
 {
-    const int n = static_cast<int>(s.size());
+    int n = s.size();
     vector<int> z(n, 0);
+    int l = 0, r = 0;
 
-    int l = 0;
-    int r = 0;
-
-    // Standard linear Z-algorithm window maintenance.
-    for (int i = 1; i < n; ++i)
+    for (int i = 1; i < n; i++)
     {
         if (i <= r)
         {
             z[i] = min(r - i + 1, z[i - l]);
         }
+
         while (i + z[i] < n && s[z[i]] == s[i + z[i]])
         {
-            ++z[i];
+            z[i]++;
         }
+
         if (i + z[i] - 1 > r)
         {
             l = i;
@@ -35,113 +33,95 @@ vector<int> computeZArray(const string &s)
 
 vector<int> findExactMatchesZ(const string &text, const string &pattern)
 {
-    vector<int> matches;
+    vector<int> ans;
     if (pattern.empty() || text.empty() || pattern.size() > text.size())
     {
-        return matches;
+        return ans;
     }
 
-    const int m = static_cast<int>(pattern.size());
-    const string combined = pattern + "$" + text;
-    const vector<int> z = computeZArray(combined);
+    int m = pattern.size();
+    string joined = pattern + "$" + text;
+    vector<int> z = computeZArray(joined);
 
-    for (int i = m + 1; i < static_cast<int>(combined.size()); ++i)
+    for (int i = m + 1; i < (int)joined.size(); i++)
     {
         if (z[i] >= m)
         {
-            matches.push_back(i - m - 1);
+            ans.push_back(i - m - 1);
         }
     }
 
-    return matches;
+    return ans;
 }
 
-namespace
+static vector<int> prefixMatches(const string &text, const string &pattern)
 {
-
-    vector<int> computePrefixMatches(const string &text, const string &pattern)
+    vector<int> pref(text.size(), 0);
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
     {
-        vector<int> prefix;
-        if (pattern.empty() || text.empty() || pattern.size() > text.size())
-        {
-            return prefix;
-        }
-
-        const int m = static_cast<int>(pattern.size());
-        const string combined = pattern + "$" + text;
-        const vector<int> z = computeZArray(combined);
-
-        prefix.assign(text.size(), 0);
-        for (int i = 0; i < static_cast<int>(text.size()); ++i)
-        {
-            prefix[i] = min(z[m + 1 + i], m);
-        }
-
-        return prefix;
+        return {};
     }
 
-    vector<int> computeSuffixMatches(const string &text, const string &pattern)
+    int m = pattern.size();
+    string joined = pattern + "$" + text;
+    vector<int> z = computeZArray(joined);
+
+    for (int i = 0; i < (int)text.size(); i++)
     {
-        vector<int> suffix;
-        if (pattern.empty() || text.empty() || pattern.size() > text.size())
-        {
-            return suffix;
-        }
+        pref[i] = min(z[m + 1 + i], m);
+    }
+    return pref;
+}
 
-        const int m = static_cast<int>(pattern.size());
-        const int n = static_cast<int>(text.size());
-        const string revPattern(pattern.rbegin(), pattern.rend());
-        const string revText(text.rbegin(), text.rend());
-        const string combined = revPattern + "$" + revText;
-        const vector<int> z = computeZArray(combined);
-
-        suffix.assign(text.size(), 0);
-
-        // For alignment i in original text, map to mirrored index in reversed text.
-        for (int i = 0; i + m <= n; ++i)
-        {
-            const int reverseIndex = n - (i + m);
-            suffix[i] = min(z[m + 1 + reverseIndex], m);
-        }
-
-        return suffix;
+static vector<int> suffixMatches(const string &text, const string &pattern)
+{
+    vector<int> suff(text.size(), 0);
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
+    {
+        return {};
     }
 
-} // namespace
+    int n = text.size();
+    int m = pattern.size();
+    string revPattern(pattern.rbegin(), pattern.rend());
+    string revText(text.rbegin(), text.rend());
+    string joined = revPattern + "$" + revText;
+    vector<int> z = computeZArray(joined);
+
+    for (int i = 0; i + m <= n; i++)
+    {
+        int revIndex = n - (i + m);
+        suff[i] = min(z[m + 1 + revIndex], m);
+    }
+    return suff;
+}
 
 vector<int> findApproxCandidateIndicesZ(
     const string &text,
     const string &pattern,
     int maxMismatches)
 {
-    vector<int> candidates;
+    vector<int> ans;
     if (pattern.empty() || text.empty() || pattern.size() > text.size())
     {
-        return candidates;
+        return ans;
     }
 
+    int n = text.size();
+    int m = pattern.size();
     maxMismatches = max(0, maxMismatches);
 
-    const int m = static_cast<int>(pattern.size());
-    const int n = static_cast<int>(text.size());
+    vector<int> pref = prefixMatches(text, pattern);
+    vector<int> suff = suffixMatches(text, pattern);
 
-    // Modified Z idea: combine longest matching prefix and suffix per alignment.
-    const vector<int> prefix = computePrefixMatches(text, pattern);
-    const vector<int> suffix = computeSuffixMatches(text, pattern);
-
-    for (int i = 0; i + m <= n; ++i)
+    for (int i = 0; i + m <= n; i++)
     {
-        int combinedMatch = prefix[i] + suffix[i];
-        if (combinedMatch > m)
+        int matched = min(m, pref[i] + suff[i]);
+        if (matched >= m - maxMismatches)
         {
-            combinedMatch = m;
-        }
-
-        if (combinedMatch >= m - maxMismatches)
-        {
-            candidates.push_back(i);
+            ans.push_back(i);
         }
     }
 
-    return candidates;
+    return ans;
 }
