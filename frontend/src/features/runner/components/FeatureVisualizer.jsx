@@ -6,11 +6,11 @@ import HuffmanVisualization from "./visualizers/HuffmanVisualization";
 import ZVisualization from "./visualizers/ZVisualization";
 
 const VISUALIZERS = Object.freeze({
-  analysis: AnalysisVisualization,
-  codon: CodonVisualization,
   dp: DPVisualization,
   huffman: HuffmanVisualization,
   z_module: ZVisualization,
+  analysis: AnalysisVisualization,
+  codon: CodonVisualization,
 });
 
 export default function FeatureVisualizer({ result }) {

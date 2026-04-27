@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { BasePill, MetricChip } from "./VisualizerPrimitives";
 import {
   buildHuffmanGraph,
+  buildNativeHuffmanGraph,
   getBaseCounts,
   normalizeDNA,
   parseHuffmanOutput,
@@ -12,7 +13,9 @@ export default function HuffmanVisualization({ result }) {
   const dna = normalizeDNA(result.dna);
   const parsed = parseHuffmanOutput(result.cleanedOutput);
   const counts = getBaseCounts(dna);
-  const graph = buildHuffmanGraph(parsed.codeEntries);
+  const graph =
+    buildNativeHuffmanGraph(parsed.treeNodes, parsed.treeEdges) ||
+    buildHuffmanGraph(parsed.codeEntries);
   const compressionRatio =
     parsed.originalBits > 0
       ? Math.max(0, Math.min(100, 100 - (parsed.compressedBits / parsed.originalBits) * 100))

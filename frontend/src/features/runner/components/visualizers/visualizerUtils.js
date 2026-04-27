@@ -63,8 +63,52 @@ export function parseHuffmanOutput(text) {
   const originalBits = Number(text.match(/Original size \(ASCII bits\):\s*(\d+)/)?.[1] || 0);
   const compressedBits = Number(text.match(/Compressed size \(Huffman bits\):\s*(\d+)/)?.[1] || 0);
   const savings = Number(text.match(/Savings vs ASCII:\s*([0-9.]+)/)?.[1] || 0);
+  const treeNodeBlock =
+    text.match(/Huffman Tree Nodes:\s*([\s\S]*?)(?:Huffman Tree Edges:|Original size)/)?.[1] || "";
+  const treeEdgeBlock =
+    text.match(/Huffman Tree Edges:\s*([\s\S]*?)(?:Original size|$)/)?.[1] || "";
+  const treeNodes = treeNodeBlock
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^Node\s+(\d+):\s*([^,]+),\s*freq=(\d+)(.*)$/);
+      if (!match) {
+        return null;
+      }
 
-  return { codeEntries, encodedDNA, originalBits, compressedBits, savings };
+      const details = match[4] || "";
+      return {
+        id: Number(match[1]),
+        symbol: match[2] === "internal" ? null : match[2].toUpperCase(),
+        frequency: Number(match[3]),
+        code: details.match(/code=([01]+)/)?.[1] || "",
+        leftId: Number(details.match(/left=(\d+)/)?.[1] || -1),
+        rightId: Number(details.match(/right=(\d+)/)?.[1] || -1),
+      };
+    })
+    .filter(Boolean);
+  const treeEdges = treeEdgeBlock
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(\d+)\s+-([01])->\s+(\d+)$/);
+      return match
+        ? { from: Number(match[1]), bit: match[2], to: Number(match[3]) }
+        : null;
+    })
+    .filter(Boolean);
+
+  return {
+    codeEntries,
+    encodedDNA,
+    originalBits,
+    compressedBits,
+    savings,
+    treeNodes,
+    treeEdges,
+  };
 }
 
 export function parseAnalysisOutput(text) {
@@ -160,6 +204,75 @@ export function buildHuffmanGraph(codeEntries) {
       fromNode: positioned.get(edge.from),
       toNode: positioned.get(edge.to),
     })),
+    height: Math.max(180, levels.length * 82 + 34),
+  };
+}
+
+export function buildNativeHuffmanGraph(treeNodes, treeEdges) {
+  if (!treeNodes?.length) {
+    return null;
+  }
+
+  const childIds = new Set(treeEdges.map((edge) => edge.to));
+  const root = treeNodes.find((node) => !childIds.has(node.id)) || treeNodes[0];
+  const childrenByParent = new Map();
+
+  for (const edge of treeEdges) {
+    if (!childrenByParent.has(edge.from)) {
+      childrenByParent.set(edge.from, []);
+    }
+    childrenByParent.get(edge.from).push(edge.to);
+  }
+
+  const depthById = new Map([[root.id, 0]]);
+  const queue = [root.id];
+
+  while (queue.length) {
+    const current = queue.shift();
+    const depth = depthById.get(current) || 0;
+
+    for (const child of childrenByParent.get(current) || []) {
+      depthById.set(child, depth + 1);
+      queue.push(child);
+    }
+  }
+
+  const levels = [];
+  for (const node of treeNodes) {
+    const depth = depthById.get(node.id) || 0;
+    if (!levels[depth]) {
+      levels[depth] = [];
+    }
+    levels[depth].push(node);
+  }
+
+  const positioned = new Map();
+  levels.forEach((level, depth) => {
+    level
+      .sort((a, b) => a.id - b.id)
+      .forEach((node, index) => {
+        positioned.set(node.id, {
+          id: String(node.id),
+          label: node.symbol || `N${node.id}`,
+          depth,
+          isLeaf: Boolean(node.symbol),
+          symbol: node.symbol,
+          code: node.code || `freq ${node.frequency}`,
+          x: ((index + 1) / (level.length + 1)) * 100,
+          y: depth * 82 + 34,
+        });
+      });
+  });
+
+  return {
+    nodes: [...positioned.values()],
+    edges: treeEdges
+      .map((edge) => ({
+        ...edge,
+        fromNode: positioned.get(edge.from),
+        toNode: positioned.get(edge.to),
+      }))
+      .filter((edge) => edge.fromNode && edge.toNode),
     height: Math.max(180, levels.length * 82 + 34),
   };
 }

@@ -1,11 +1,11 @@
 import axios from "axios";
 
 export const TOOL_LABELS = Object.freeze({
-  analysis: "GC Content and Similarity",
-  codon: "DNA to Protein",
   dp: "Mutation Detection (DP)",
   huffman: "Huffman Compression",
   z_module: "Pattern Matching (Z)",
+  codon: "DNA to Protein",
+  analysis: "GC Content and Similarity",
 });
 
 const MENU_OPTION_BY_TOOL = Object.freeze({
