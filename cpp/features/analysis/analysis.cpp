@@ -3,9 +3,11 @@
 
 using namespace std;
 
+// Time: O(n), Space: O(n)
 string normalizeDNA(const string &dna)
 {
     string res;
+    res.reserve(dna.size());
     for (char ch : dna)
     {
         if (!isspace((unsigned char)ch))
@@ -16,6 +18,7 @@ string normalizeDNA(const string &dna)
     return res;
 }
 
+// Time: O(n), Space: O(1)
 bool validateDNA(const string &dna, string &errorMessage)
 {
     if (dna.empty())
@@ -38,6 +41,7 @@ bool validateDNA(const string &dna, string &errorMessage)
     return true;
 }
 
+// Time: O(n), Space: O(1)
 double calculateGCContent(const string &dna)
 {
     if (dna.empty())
@@ -57,6 +61,7 @@ double calculateGCContent(const string &dna)
     return (gc * 100.0) / dna.size();
 }
 
+// Time: O(min(|a|, |b|)), Space: O(1)
 int mismatchCount(const string &a, const string &b)
 {
     int common = min(a.size(), b.size());
@@ -74,6 +79,7 @@ int mismatchCount(const string &a, const string &b)
     return ans;
 }
 
+// Time: O(k^2 * L), Space: O(k^2), where k = number of sequences, L = average sequence length
 vector<vector<int>> buildSimilarityMatrix(const vector<string> &sequences)
 {
     int n = sequences.size();
@@ -92,6 +98,7 @@ vector<vector<int>> buildSimilarityMatrix(const vector<string> &sequences)
     return matrix;
 }
 
+// Time: O(n^2), Space: O(1) extra
 void printSimilarityMatrix(const vector<vector<int>> &matrix, ostream &out)
 {
     if (matrix.empty())

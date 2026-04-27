@@ -3,9 +3,11 @@
 
 using namespace std;
 
+// Time: O(n), Space: O(n)
 static string upperNoSpaces(const string &s)
 {
     string res;
+    res.reserve(s.size());
     for (char ch : s)
     {
         if (!isspace((unsigned char)ch))
@@ -16,6 +18,7 @@ static string upperNoSpaces(const string &s)
     return res;
 }
 
+// Time: O(n), Space: O(1) extra
 static string upperWord(string s)
 {
     for (char &ch : s)
@@ -25,6 +28,7 @@ static string upperWord(string s)
     return s;
 }
 
+// Time: O(lines in codon file), Space: O(unique codons)
 bool loadCodonTable(const string &filePath, CodonTable &table)
 {
     ifstream fin(filePath);
@@ -34,6 +38,7 @@ bool loadCodonTable(const string &filePath, CodonTable &table)
     }
 
     table.clear();
+    table.reserve(64);
     string codon, amino;
     string line;
 
@@ -60,6 +65,7 @@ bool loadCodonTable(const string &filePath, CodonTable &table)
     return !table.empty();
 }
 
+// Time: O(n), Space: O(n/3) for output protein sequence
 vector<string> translateDNAToProtein(const string &dna, const CodonTable &table)
 {
     vector<string> protein;
@@ -69,18 +75,20 @@ vector<string> translateDNAToProtein(const string &dna, const CodonTable &table)
     }
 
     string cleanDNA = upperNoSpaces(dna);
+    protein.reserve(cleanDNA.size() / 3);
 
     for (int i = 0; i + 2 < (int)cleanDNA.size(); i += 3)
     {
         string codon = cleanDNA.substr(i, 3);
 
-        if (!table.count(codon))
+        auto it = table.find(codon);
+        if (it == table.end())
         {
             protein.push_back("Unknown");
             continue;
         }
 
-        string amino = table.at(codon);
+        const string &amino = it->second;
         string check = upperWord(amino);
 
         if (check == "STOP" || check == "*")
@@ -94,6 +102,7 @@ vector<string> translateDNAToProtein(const string &dna, const CodonTable &table)
     return protein;
 }
 
+// Time: O(k), Space: O(total output characters)
 string proteinToString(const vector<string> &proteinSequence)
 {
     if (proteinSequence.empty())
@@ -101,10 +110,19 @@ string proteinToString(const vector<string> &proteinSequence)
         return "(empty)";
     }
 
-    string ans = proteinSequence[0];
+    size_t totalLen = 0;
+    for (const string &amino : proteinSequence)
+    {
+        totalLen += amino.size() + 1;
+    }
+
+    string ans;
+    ans.reserve(totalLen);
+    ans += proteinSequence[0];
     for (int i = 1; i < (int)proteinSequence.size(); i++)
     {
-        ans += " " + proteinSequence[i];
+        ans += ' ';
+        ans += proteinSequence[i];
     }
     return ans;
 }

@@ -3,6 +3,7 @@
 
 using namespace std;
 
+// Time: O(n), Space: O(n)
 vector<int> computeZArray(const string &s)
 {
     int n = s.size();
@@ -31,6 +32,7 @@ vector<int> computeZArray(const string &s)
     return z;
 }
 
+// Time: O(n + m), Space: O(n + m)
 vector<int> findExactMatchesZ(const string &text, const string &pattern)
 {
     vector<int> ans;
@@ -40,7 +42,11 @@ vector<int> findExactMatchesZ(const string &text, const string &pattern)
     }
 
     int m = pattern.size();
-    string joined = pattern + "$" + text;
+    string joined;
+    joined.reserve(pattern.size() + 1 + text.size());
+    joined += pattern;
+    joined.push_back('$');
+    joined += text;
     vector<int> z = computeZArray(joined);
 
     for (int i = m + 1; i < (int)joined.size(); i++)
@@ -54,16 +60,21 @@ vector<int> findExactMatchesZ(const string &text, const string &pattern)
     return ans;
 }
 
+// Time: O(n + m), Space: O(n + m)
 static vector<int> prefixMatches(const string &text, const string &pattern)
 {
-    vector<int> pref(text.size(), 0);
     if (pattern.empty() || text.empty() || pattern.size() > text.size())
     {
         return {};
     }
 
+    vector<int> pref(text.size(), 0);
     int m = pattern.size();
-    string joined = pattern + "$" + text;
+    string joined;
+    joined.reserve(pattern.size() + 1 + text.size());
+    joined += pattern;
+    joined.push_back('$');
+    joined += text;
     vector<int> z = computeZArray(joined);
 
     for (int i = 0; i < (int)text.size(); i++)
@@ -73,19 +84,24 @@ static vector<int> prefixMatches(const string &text, const string &pattern)
     return pref;
 }
 
+// Time: O(n + m), Space: O(n + m)
 static vector<int> suffixMatches(const string &text, const string &pattern)
 {
-    vector<int> suff(text.size(), 0);
     if (pattern.empty() || text.empty() || pattern.size() > text.size())
     {
         return {};
     }
 
+    vector<int> suff(text.size(), 0);
     int n = text.size();
     int m = pattern.size();
     string revPattern(pattern.rbegin(), pattern.rend());
     string revText(text.rbegin(), text.rend());
-    string joined = revPattern + "$" + revText;
+    string joined;
+    joined.reserve(revPattern.size() + 1 + revText.size());
+    joined += revPattern;
+    joined.push_back('$');
+    joined += revText;
     vector<int> z = computeZArray(joined);
 
     for (int i = 0; i + m <= n; i++)
@@ -96,6 +112,7 @@ static vector<int> suffixMatches(const string &text, const string &pattern)
     return suff;
 }
 
+// Time: O(n + m), Space: O(n)
 vector<int> findApproxCandidateIndicesZ(
     const string &text,
     const string &pattern,
