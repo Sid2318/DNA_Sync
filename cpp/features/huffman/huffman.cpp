@@ -52,7 +52,7 @@ struct MinHeapNodeOrder
         }
 
         return left->id > right->id;
-    }
+    }   
 };
 
 // Time: O(k), Space: O(h) recursion stack, where k = unique symbols and h = tree height
@@ -78,6 +78,7 @@ static void buildCodesFromTree(HuffmanNode *root, string &path, unordered_map<ch
     path.pop_back();
 }
 
+                                                                            ///-----///
 // Time: O(k), Space: O(k)
 static void captureTree(
     HuffmanNode *root,

@@ -1,0 +1,1480 @@
+﻿DNA Project - Combined C++ Source Code
+Generated: 2026-04-27 12:07:55
+Root: C:\Users\siddhi\Desktop\VIT\TY\DAA\DAA cp\dna_project
+Total files: 11
+
+============================================================
+
+
+==================== FILE: .\cpp\app\main.cpp ====================
+
+#include <bits/stdc++.h>
+#include <filesystem>
+
+#include "../features/analysis/analysis.h"
+#include "../features/codon/codon.h"
+#include "../features/dp/dp_module.h"
+#include "../features/huffman/huffman.h"
+#include "../features/z/z_module.h"
+
+using namespace std;
+namespace fs = std::filesystem;
+
+string pickReadable(vector<string> paths)
+{
+    for (string path : paths)
+    {
+        ifstream fin(path);
+        if (fin.good()) return path;
+    }
+    return paths.empty() ? "" : paths[0];
+}
+
+string pickWritable(vector<string> paths)
+{
+    for (string path : paths)
+    {
+        fs::path p(path);
+        if (p.has_parent_path())
+        {
+            error_code ec;
+            fs::create_directories(p.parent_path(), ec);
+        }
+
+        ofstream fout(path, ios::app);
+        if (fout.good()) return path;
+    }
+    return "output.txt";
+}
+
+const string DNA_FILE = pickReadable({
+    "cpp/data/dna.txt", "../cpp/data/dna.txt", "../../cpp/data/dna.txt",
+    "../data/dna.txt", "data/dna.txt", "dna.txt"
+});
+
+const string CODON_FILE = pickReadable({
+    "cpp/data/codon.txt", "../cpp/data/codon.txt", "../../cpp/data/codon.txt",
+    "../data/codon.txt", "data/codon.txt", "codon.txt"
+});
+
+const string OUTPUT_FILE = pickWritable({
+    "cpp/logs/output.txt", "../cpp/logs/output.txt", "../../cpp/logs/output.txt",
+    "../logs/output.txt", "logs/output.txt", "output.txt"
+});
+
+void resetOutputFile()
+{
+    ofstream fout(OUTPUT_FILE);
+    fout << "DNA Analysis System Output\n";
+    fout << "==========================\n\n";
+}
+
+void saveLog(const string &text)
+{
+    ofstream fout(OUTPUT_FILE, ios::app);
+    if (fout) fout << text << "\n";
+}
+
+string readFileDNA(const string &path)
+{
+    ifstream fin(path);
+    string dna, line;
+    while (getline(fin, line)) dna += line;
+    return dna;
+}
+
+int readInt(const string &prompt)
+{
+    int x;
+    while (true)
+    {
+        cout << prompt;
+        if (cin >> x)
+        {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return x;
+        }
+
+        if (cin.eof()) throw runtime_error("eof");
+
+        cout << "Invalid number. Try again.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+}
+
+string readLine(const string &prompt)
+{
+    cout << prompt;
+    string s;
+    if (!getline(cin, s)) throw runtime_error("eof");
+    return s;
+}
+
+bool yes(const string &s)
+{
+    return !s.empty() && (s[0] == 'y' || s[0] == 'Y');
+}
+
+void printMenu()
+{
+    cout << "\n===== DNA Analysis System =====\n";
+    cout << "1. Load DNA\n";
+    cout << "2. Pattern Matching (Z-Algorithm)\n";
+    cout << "3. Mutation Detection (DP Verification)\n";
+    cout << "4. DNA -> Protein\n";
+    cout << "5. Huffman Compression\n";
+    cout << "6. GC Content + Similarity Matrix\n";
+    cout << "7. Exit\n";
+}
+
+void printIndexList(const string &title, const vector<int> &indices)
+{
+    cout << title << "\n";
+    if (indices.empty())
+    {
+        cout << "None\n";
+        return;
+    }
+
+    for (int idx : indices) cout << "Index " << idx << "\n";
+}
+
+void printMutationResults(const vector<MutationResult> &results)
+{
+    cout << "Approx Matches (DP Verified):\n";
+    if (results.empty())
+    {
+        cout << "None\n";
+        return;
+    }
+
+    for (auto r : results)
+    {
+        cout << "Index " << r.index << " (" << r.distance << " "
+             << (r.distance == 1 ? "mismatch" : "mismatches") << ")";
+
+        if (!r.mismatchPositions.empty())
+        {
+            cout << " at positions: ";
+            for (int i = 0; i < (int)r.mismatchPositions.size(); i++)
+            {
+                if (i) cout << ", ";
+                cout << r.mismatchPositions[i];
+            }
+        }
+        cout << "\n";
+    }
+}
+
+bool needDNA(const string &dna)
+{
+    if (!dna.empty()) return false;
+    cout << "Load DNA first (option 1).\n";
+    return true;
+}
+
+void loadDNAMenu(string &dna)
+{
+    cout << "\n1. Load from file (" << DNA_FILE << ")\n";
+    cout << "2. Enter DNA manually\n";
+    int mode = readInt("Select input mode: ");
+
+    string raw;
+    if (mode == 1)
+    {
+        raw = readFileDNA(DNA_FILE);
+        if (raw.empty())
+        {
+            cout << "Failed to read DNA from file: " << DNA_FILE << "\n";
+            return;
+        }
+    }
+    else if (mode == 2)
+    {
+        raw = readLine("Enter DNA sequence: ");
+    }
+    else
+    {
+        cout << "Invalid input mode.\n";
+        return;
+    }
+
+    string cleaned = normalizeDNA(raw);
+    string error;
+    if (!validateDNA(cleaned, error))
+    {
+        cout << "Invalid DNA: " << error << "\n";
+        return;
+    }
+
+    dna = cleaned;
+    cout << "DNA loaded successfully (length = " << dna.size() << ").\n";
+
+    stringstream log;
+    log << "[Load DNA]\n";
+    log << "DNA: " << dna << "\n";
+    saveLog(log.str());
+}
+
+void zMenu(const string &dna, string &lastPattern)
+{
+    string pattern = normalizeDNA(readLine("Enter pattern: "));
+    string error;
+    if (!validateDNA(pattern, error))
+    {
+        cout << "Invalid pattern: " << error << "\n";
+        return;
+    }
+
+    int k = readInt("Allowed mismatches for modified Z candidate filtering: ");
+    vector<int> exact = findExactMatchesZ(dna, pattern);
+    vector<int> candidates = findApproxCandidateIndicesZ(dna, pattern, k);
+
+    printIndexList("Exact Matches:", exact);
+    printIndexList("Approximate Candidate Matches (Modified Z):", candidates);
+
+    lastPattern = pattern;
+
+    stringstream log;
+    log << "[Pattern Matching]\n";
+    log << "Pattern: " << pattern << ", k=" << k << "\n";
+    log << "Exact Matches: ";
+    if (exact.empty()) log << "None";
+    else for (int idx : exact) log << idx << " ";
+    log << "\nApprox Candidate Matches: ";
+    if (candidates.empty()) log << "None";
+    else for (int idx : candidates) log << idx << " ";
+    log << "\n";
+    saveLog(log.str());
+}
+
+void dpMenu(const string &dna, string &lastPattern)
+{
+    string pattern;
+    if (!lastPattern.empty())
+    {
+        string reuse = readLine("Reuse last pattern (" + lastPattern + ")? (y/n): ");
+        if (yes(reuse)) pattern = lastPattern;
+    }
+
+    if (pattern.empty())
+    {
+        pattern = normalizeDNA(readLine("Enter pattern for mutation detection: "));
+    }
+
+    string error;
+    if (!validateDNA(pattern, error))
+    {
+        cout << "Invalid pattern: " << error << "\n";
+        return;
+    }
+
+    int k = readInt("Enter mismatch threshold k for DP verification: ");
+    vector<int> candidates = findApproxCandidateIndicesZ(dna, pattern, k);
+    vector<MutationResult> verified = verifyCandidatesWithDP(dna, pattern, candidates, k);
+
+    printMutationResults(verified);
+
+    stringstream log;
+    log << "[Mutation Detection]\n";
+    log << "Pattern: " << pattern << ", k=" << k << "\n";
+    if (verified.empty()) log << "No verified matches\n";
+    else for (auto m : verified) log << "Index " << m.index << " Distance " << m.distance << "\n";
+    saveLog(log.str());
+}
+
+void codonMenu(const string &dna, CodonTable &codonTable)
+{
+    if (codonTable.empty() && !loadCodonTable(CODON_FILE, codonTable))
+    {
+        cout << "Failed to load codon table from " << CODON_FILE << "\n";
+        return;
+    }
+
+    vector<string> protein = translateDNAToProtein(dna, codonTable);
+    string proteinText = proteinToString(protein);
+
+    cout << "Protein:\n" << proteinText << "\n";
+
+    stringstream log;
+    log << "[Translation]\n";
+    log << "Protein: " << proteinText << "\n";
+    saveLog(log.str());
+}
+
+void huffmanMenu(const string &dna)
+{
+    HuffmanResult compressed = compressDNAHuffman(dna);
+    printHuffmanReport(compressed, cout);
+
+    stringstream log;
+    log << "[Huffman Compression]\n";
+    printHuffmanReport(compressed, log);
+    saveLog(log.str());
+}
+
+void analysisMenu(const string &dna)
+{
+    double gc = calculateGCContent(dna);
+    cout << fixed << setprecision(2);
+    cout << "GC Content: " << gc << "%\n";
+
+    int cnt = readInt("How many additional sequences for similarity matrix? ");
+    cnt = max(0, cnt);
+
+    vector<string> sequences;
+    sequences.push_back(dna);
+
+    for (int i = 0; i < cnt; i++)
+    {
+        string seq = normalizeDNA(readLine("Enter sequence " + to_string(i + 1) + ": "));
+        string error;
+        if (!validateDNA(seq, error))
+        {
+            cout << "Skipped invalid sequence: " << error << "\n";
+            continue;
+        }
+        sequences.push_back(seq);
+    }
+
+    vector<vector<int>> matrix = buildSimilarityMatrix(sequences);
+    printSimilarityMatrix(matrix, cout);
+
+    stringstream log;
+    log << "[Analysis]\n";
+    log << fixed << setprecision(2) << "GC Content: " << gc << "%\n";
+    printSimilarityMatrix(matrix, log);
+    saveLog(log.str());
+}
+
+int main()
+{
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    resetOutputFile();
+
+    string dna, lastPattern;
+    CodonTable codonTable;
+
+    if (!loadCodonTable(CODON_FILE, codonTable))
+    {
+        cout << "Warning: Could not load codon table from " << CODON_FILE << ".\n";
+    }
+
+    try
+    {
+        while (true)
+        {
+            printMenu();
+            int choice = readInt("Choose an option: ");
+
+            switch (choice)
+            {
+            case 1:
+                loadDNAMenu(dna);
+                break;
+            case 2:
+                if (!needDNA(dna)) zMenu(dna, lastPattern);
+                break;
+            case 3:
+                if (!needDNA(dna)) dpMenu(dna, lastPattern);
+                break;
+            case 4:
+                if (!needDNA(dna)) codonMenu(dna, codonTable);
+                break;
+            case 5:
+                if (!needDNA(dna)) huffmanMenu(dna);
+                break;
+            case 6:
+                if (!needDNA(dna)) analysisMenu(dna);
+                break;
+            case 7:
+                cout << "Exiting. Output log saved to " << OUTPUT_FILE << "\n";
+                return 0;
+            default:
+                cout << "Invalid choice. Please select 1-7.\n";
+            }
+        }
+    }
+    catch (...)
+    {
+        cout << "Input stream closed. Exiting. Output log saved to " << OUTPUT_FILE << "\n";
+    }
+
+    return 0;
+}
+
+
+
+
+==================== FILE: .\cpp\features\analysis\analysis.cpp ====================
+
+#include "analysis.h"
+#include <bits/stdc++.h>
+
+using namespace std;
+
+// Time: O(n), Space: O(n)
+string normalizeDNA(const string &dna)
+{
+    string res;
+    res.reserve(dna.size());
+    for (char ch : dna)
+    {
+        if (!isspace((unsigned char)ch))
+        {
+            res.push_back((char)toupper((unsigned char)ch));
+        }
+    }
+    return res;
+}
+
+// Time: O(n), Space: O(1)
+bool validateDNA(const string &dna, string &errorMessage)
+{
+    if (dna.empty())
+    {
+        errorMessage = "DNA sequence is empty.";
+        return false;
+    }
+
+    for (int i = 0; i < (int)dna.size(); i++)
+    {
+        char ch = dna[i];
+        if (ch != 'A' && ch != 'C' && ch != 'G' && ch != 'T')
+        {
+            errorMessage = "Invalid DNA character found at index " + to_string(i) + ": " + ch;
+            return false;
+        }
+    }
+
+    errorMessage = "";
+    return true;
+}
+
+// Time: O(n), Space: O(1)
+double calculateGCContent(const string &dna)
+{
+    if (dna.empty())
+    {
+        return 0.0;
+    }
+
+    int gc = 0;
+    for (char ch : dna)
+    {
+        if (ch == 'G' || ch == 'C')
+        {
+            gc++;
+        }
+    }
+
+    return (gc * 100.0) / dna.size();
+}
+
+// Time: O(min(|a|, |b|)), Space: O(1)
+int mismatchCount(const string &a, const string &b)
+{
+    int common = min(a.size(), b.size());
+    int ans = 0;
+
+    for (int i = 0; i < common; i++)
+    {
+        if (a[i] != b[i])
+        {
+            ans++;
+        }
+    }
+
+    ans += abs((int)a.size() - (int)b.size());
+    return ans;
+}
+
+// Time: O(k^2 * L), Space: O(k^2), where k = number of sequences, L = average sequence length
+vector<vector<int>> buildSimilarityMatrix(const vector<string> &sequences)
+{
+    int n = sequences.size();
+    vector<vector<int>> matrix(n, vector<int>(n, 0));
+
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = i; j < n; j++)
+        {
+            int d = mismatchCount(sequences[i], sequences[j]);
+            matrix[i][j] = d;
+            matrix[j][i] = d;
+        }
+    }
+
+    return matrix;
+}
+
+// Time: O(n^2), Space: O(1) extra
+void printSimilarityMatrix(const vector<vector<int>> &matrix, ostream &out)
+{
+    if (matrix.empty())
+    {
+        out << "Similarity matrix is empty.\n";
+        return;
+    }
+
+    int n = matrix.size();
+    out << "Similarity Matrix (mismatch count):\n";
+    out << setw(8) << " ";
+
+    for (int i = 0; i < n; i++)
+    {
+        out << setw(8) << ("S" + to_string(i));
+    }
+    out << "\n";
+
+    for (int i = 0; i < n; i++)
+    {
+        out << setw(8) << ("S" + to_string(i));
+        for (int j = 0; j < n; j++)
+        {
+            out << setw(8) << matrix[i][j];
+        }
+        out << "\n";
+    }
+}
+
+
+
+
+==================== FILE: .\cpp\features\analysis\analysis.h ====================
+
+#ifndef ANALYSIS_H
+#define ANALYSIS_H
+
+#include <bits/stdc++.h>
+using namespace std;
+
+string normalizeDNA(const string &dna);
+bool validateDNA(const string &dna, string &errorMessage);
+double calculateGCContent(const string &dna);
+int mismatchCount(const string &a, const string &b);
+vector<vector<int>> buildSimilarityMatrix(const vector<string> &sequences);
+void printSimilarityMatrix(const vector<vector<int>> &matrix, ostream &out);
+
+#endif
+
+
+
+
+==================== FILE: .\cpp\features\codon\codon.cpp ====================
+
+#include "codon.h"
+#include <bits/stdc++.h>
+
+using namespace std;
+
+// Time: O(n), Space: O(n)
+static string upperNoSpaces(const string &s)
+{
+    string res;
+    res.reserve(s.size());
+    for (char ch : s)
+    {
+        if (!isspace((unsigned char)ch))
+        {
+            res.push_back((char)toupper((unsigned char)ch));
+        }
+    }
+    return res;
+}
+
+// Time: O(n), Space: O(1) extra
+static string upperWord(string s)
+{
+    for (char &ch : s)
+    {
+        ch = (char)toupper((unsigned char)ch);
+    }
+    return s;
+}
+
+// Time: O(lines in codon file), Space: O(unique codons)
+bool loadCodonTable(const string &filePath, CodonTable &table)
+{
+    ifstream fin(filePath);
+    if (!fin)
+    {
+        return false;
+    }
+
+    table.clear();
+    table.reserve(64);
+    string codon, amino;
+    string line;
+
+    while (getline(fin, line))
+    {
+        if (line.empty() || line[0] == '#')
+        {
+            continue;
+        }
+
+        stringstream ss(line);
+        if (!(ss >> codon >> amino))
+        {
+            continue;
+        }
+
+        codon = upperWord(codon);
+        if ((int)codon.size() == 3)
+        {
+            table[codon] = amino;
+        }
+    }
+
+    return !table.empty();
+}
+
+// Time: O(n), Space: O(n/3) for output protein sequence
+vector<string> translateDNAToProtein(const string &dna, const CodonTable &table)
+{
+    vector<string> protein;
+    if (dna.empty() || table.empty())
+    {
+        return protein;
+    }
+
+    string cleanDNA = upperNoSpaces(dna);
+    protein.reserve(cleanDNA.size() / 3);
+
+    for (int i = 0; i + 2 < (int)cleanDNA.size(); i += 3)
+    {
+        string codon = cleanDNA.substr(i, 3);
+
+        auto it = table.find(codon);
+        if (it == table.end())
+        {
+            protein.push_back("Unknown");
+            continue;
+        }
+
+        const string &amino = it->second;
+        string check = upperWord(amino);
+
+        if (check == "STOP" || check == "*")
+        {
+            break;
+        }
+
+        protein.push_back(amino);
+    }
+
+    return protein;
+}
+
+// Time: O(k), Space: O(total output characters)
+string proteinToString(const vector<string> &proteinSequence)
+{
+    if (proteinSequence.empty())
+    {
+        return "(empty)";
+    }
+
+    size_t totalLen = 0;
+    for (const string &amino : proteinSequence)
+    {
+        totalLen += amino.size() + 1;
+    }
+
+    string ans;
+    ans.reserve(totalLen);
+    ans += proteinSequence[0];
+    for (int i = 1; i < (int)proteinSequence.size(); i++)
+    {
+        ans += ' ';
+        ans += proteinSequence[i];
+    }
+    return ans;
+}
+
+
+
+
+==================== FILE: .\cpp\features\codon\codon.h ====================
+
+#ifndef CODON_H
+#define CODON_H
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using CodonTable = unordered_map<string, string>;
+
+bool loadCodonTable(const string &filePath, CodonTable &table);
+vector<string> translateDNAToProtein(const string &dna, const CodonTable &table);
+string proteinToString(const vector<string> &proteinSequence);
+
+#endif
+
+
+
+
+==================== FILE: .\cpp\features\dp\dp_module.cpp ====================
+
+#include "dp_module.h"
+#include <bits/stdc++.h>
+
+using namespace std;
+
+// Time: O(m*n), Space: O(m*n)
+static vector<vector<int>> makeDP(const string &a, const string &b)
+{
+    int m = a.size(), n = b.size();
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
+
+    for (int i = 0; i <= m; i++)
+        dp[i][0] = i;
+    for (int j = 0; j <= n; j++)
+        dp[0][j] = j;
+
+    for (int i = 1; i <= m; i++)
+    {
+        for (int j = 1; j <= n; j++)
+        {
+            int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+            dp[i][j] = min({dp[i - 1][j] + 1,
+                            dp[i][j - 1] + 1,
+                            dp[i - 1][j - 1] + cost});
+        }
+    }
+
+    return dp;
+}
+
+// Time: O(m*n), Space: O(min(m, n))
+static int editDistanceLinearSpace(const string &a, const string &b)
+{
+    const string *s1 = &a;
+    const string *s2 = &b;
+    if (s1->size() < s2->size())
+    {
+        swap(s1, s2);
+    }
+
+    const int m = static_cast<int>(s1->size());
+    const int n = static_cast<int>(s2->size());
+    vector<int> prev(n + 1), cur(n + 1);
+
+    for (int j = 0; j <= n; ++j)
+    {
+        prev[j] = j;
+    }
+
+    for (int i = 1; i <= m; ++i)
+    {
+        cur[0] = i;
+        for (int j = 1; j <= n; ++j)
+        {
+            const int cost = ((*s1)[i - 1] == (*s2)[j - 1]) ? 0 : 1;
+            cur[j] = min({
+                prev[j] + 1,
+                cur[j - 1] + 1,
+                prev[j - 1] + cost,
+            });
+        }
+        prev.swap(cur);
+    }
+
+    return prev[n];
+}
+
+// Time: O(m), Space: O(1)
+static int hammingDistanceWithCutoff(
+    const string &pattern,
+    const string &text,
+    int start,
+    int cutoff,
+    vector<int> *mismatchPositions = nullptr)
+{
+    int mismatches = 0;
+    const int m = static_cast<int>(pattern.size());
+
+    if (mismatchPositions != nullptr)
+    {
+        mismatchPositions->clear();
+        mismatchPositions->reserve(m);
+    }
+
+    for (int i = 0; i < m; ++i)
+    {
+        if (pattern[i] != text[start + i])
+        {
+            ++mismatches;
+            if (mismatchPositions != nullptr)
+            {
+                mismatchPositions->push_back(i);
+            }
+
+            if (cutoff >= 0 && mismatches > cutoff)
+            {
+                return mismatches;
+            }
+        }
+    }
+
+    return mismatches;
+}
+
+// Time: O(m*n) general case, O(min(m, n)) space
+int editDistance(const string &a, const string &b)
+{
+    if (a.size() == b.size())
+    {
+        return hammingDistanceWithCutoff(a, b, 0, -1);
+    }
+
+    return editDistanceLinearSpace(a, b);
+}
+
+// Time: O(m*n) worst-case, O(m*n) space for unequal-length alignment tracing
+vector<int> getMismatchPositions(const string &a, const string &b)
+{
+    vector<int> pos;
+
+    if (a.size() == b.size())
+    {
+        for (int i = 0; i < (int)a.size(); i++)
+        {
+            if (a[i] != b[i])
+            {
+                pos.push_back(i);
+            }
+        }
+        return pos;
+    }
+
+    vector<vector<int>> dp = makeDP(a, b);
+    int i = a.size();
+    int j = b.size();
+
+    while (i > 0 || j > 0)
+    {
+        if (i > 0 && j > 0 && a[i - 1] == b[j - 1])
+        {
+            i--;
+            j--;
+        }
+        else if (i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + 1)
+        {
+            pos.push_back(i - 1);
+            i--;
+            j--;
+        }
+        else if (i > 0 && dp[i][j] == dp[i - 1][j] + 1)
+        {
+            pos.push_back(i - 1);
+            i--;
+        }
+        else if (j > 0 && dp[i][j] == dp[i][j - 1] + 1)
+        {
+            pos.push_back(i);
+            j--;
+        }
+        else
+        {
+            if (i > 0)
+                i--;
+            else
+                j--;
+        }
+    }
+
+    sort(pos.begin(), pos.end());
+    pos.erase(unique(pos.begin(), pos.end()), pos.end());
+    return pos;
+}
+
+// Time: O(c*m + r*log r), Space: O(r + n)
+// c = candidate count, m = pattern length, r = verified matches, n = text length
+vector<MutationResult> verifyCandidatesWithDP(
+    const string &text,
+    const string &pattern,
+    const vector<int> &candidateIndices,
+    int maxMismatches)
+{
+    vector<MutationResult> ans;
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
+    {
+        return ans;
+    }
+
+    const int n = static_cast<int>(text.size());
+    const int m = static_cast<int>(pattern.size());
+    maxMismatches = max(0, maxMismatches);
+
+    vector<unsigned char> seen(n + 1, 0);
+    vector<int> mismatchPositions;
+
+    for (int idx : candidateIndices)
+    {
+        if (idx < 0 || idx + m > n || seen[idx])
+        {
+            continue;
+        }
+        seen[idx] = 1;
+
+        const int dist = hammingDistanceWithCutoff(pattern, text, idx, maxMismatches, &mismatchPositions);
+
+        if (dist <= maxMismatches)
+        {
+            MutationResult cur;
+            cur.index = idx;
+            cur.distance = dist;
+            cur.mismatchPositions = mismatchPositions;
+            ans.push_back(cur);
+        }
+    }
+
+    sort(ans.begin(), ans.end(), [](const MutationResult &a, const MutationResult &b)
+         {
+        if (a.distance != b.distance) return a.distance < b.distance;
+        return a.index < b.index; });
+
+    return ans;
+}
+
+
+
+
+==================== FILE: .\cpp\features\dp\dp_module.h ====================
+
+#ifndef DP_MODULE_H
+#define DP_MODULE_H
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct MutationResult
+{
+    int index = 0;
+    int distance = 0;
+    vector<int> mismatchPositions;
+};
+
+int editDistance(const string &a, const string &b);
+vector<int> getMismatchPositions(const string &a, const string &b);
+vector<MutationResult> verifyCandidatesWithDP(
+    const string &text,
+    const string &pattern,
+    const vector<int> &candidateIndices,
+    int maxMismatches);
+
+#endif
+
+
+
+
+==================== FILE: .\cpp\features\huffman\huffman.cpp ====================
+
+#include "huffman.h"
+#include <bits/stdc++.h>
+
+using namespace std;
+
+struct HuffmanNode
+{
+    int id;
+    char ch;
+    int freq;
+    char minSymbol;
+    HuffmanNode *left;
+    HuffmanNode *right;
+
+    HuffmanNode(int nodeId, char c, int f)
+    {
+        id = nodeId;
+        ch = c;
+        freq = f;
+        minSymbol = c;
+        left = right = nullptr;
+    }
+
+    HuffmanNode(int nodeId, HuffmanNode *leftChild, HuffmanNode *rightChild)
+    {
+        id = nodeId;
+        ch = 0;
+        freq = leftChild->freq + rightChild->freq;
+        minSymbol = min(leftChild->minSymbol, rightChild->minSymbol);
+        left = leftChild;
+        right = rightChild;
+    }
+};
+
+static bool isLeaf(const HuffmanNode *node)
+{
+    return node != nullptr && node->left == nullptr && node->right == nullptr;
+}
+
+struct MinHeapNodeOrder
+{
+    bool operator()(HuffmanNode *left, HuffmanNode *right) const
+    {
+        if (left->freq != right->freq)
+        {
+            return left->freq > right->freq;
+        }
+
+        if (left->minSymbol != right->minSymbol)
+        {
+            return left->minSymbol > right->minSymbol;
+        }
+
+        return left->id > right->id;
+    }
+};
+
+// Time: O(k), Space: O(h) recursion stack, where k = unique symbols and h = tree height
+static void buildCodesFromTree(HuffmanNode *root, string &path, unordered_map<char, string> &codes)
+{
+    if (root == nullptr)
+    {
+        return;
+    }
+
+    if (isLeaf(root))
+    {
+        codes[root->ch] = path.empty() ? "0" : path;
+        return;
+    }
+
+    path.push_back('0');
+    buildCodesFromTree(root->left, path, codes);
+    path.pop_back();
+
+    path.push_back('1');
+    buildCodesFromTree(root->right, path, codes);
+    path.pop_back();
+}
+
+// Time: O(k), Space: O(k)
+static void captureTree(
+    HuffmanNode *root,
+    const unordered_map<char, string> &codes,
+    vector<HuffmanResult::TreeNode> &nodes,
+    vector<HuffmanResult::TreeEdge> &edges)
+{
+    if (root == nullptr)
+    {
+        return;
+    }
+
+    HuffmanResult::TreeNode view;
+    view.id = root->id;
+    view.frequency = root->freq;
+    view.symbol = root->ch;
+
+    if (root->left != nullptr)
+    {
+        view.leftId = root->left->id;
+        edges.push_back({root->id, root->left->id, '0'});
+    }
+
+    if (root->right != nullptr)
+    {
+        view.rightId = root->right->id;
+        edges.push_back({root->id, root->right->id, '1'});
+    }
+
+    if (isLeaf(root))
+    {
+        auto it = codes.find(root->ch);
+        if (it != codes.end())
+        {
+            view.code = it->second;
+        }
+    }
+
+    nodes.push_back(view);
+    captureTree(root->left, codes, nodes, edges);
+    captureTree(root->right, codes, nodes, edges);
+}
+
+// Time: O(k), Space: O(h)
+static void destroyTree(HuffmanNode *root)
+{
+    if (root == nullptr)
+    {
+        return;
+    }
+
+    destroyTree(root->left);
+    destroyTree(root->right);
+    delete root;
+}
+
+// Time: O(n + k log k), Space: O(n + k), where n = dna length, k = unique symbols
+HuffmanResult compressDNAHuffman(const string &dna)
+{
+    HuffmanResult result;
+    if (dna.empty())
+    {
+        return result;
+    }
+
+    result.frequencies.reserve(8);
+    for (char ch : dna)
+    {
+        result.frequencies[ch]++;
+    }
+
+    priority_queue<HuffmanNode *, vector<HuffmanNode *>, MinHeapNodeOrder> minHeap;
+    vector<pair<char, int>> sortedFrequencies(result.frequencies.begin(), result.frequencies.end());
+    sort(sortedFrequencies.begin(), sortedFrequencies.end());
+
+    result.codes.reserve(result.frequencies.size());
+    result.treeNodes.reserve(result.frequencies.size() * 2);
+    result.treeEdges.reserve(result.frequencies.size() * 2);
+
+    int nextNodeId = 1;
+
+    for (const auto &entry : sortedFrequencies)
+    {
+        minHeap.push(new HuffmanNode(nextNodeId++, entry.first, entry.second));
+    }
+
+    while (minHeap.size() > 1)
+    {
+        HuffmanNode *leftChild = minHeap.top();
+        minHeap.pop();
+        HuffmanNode *rightChild = minHeap.top();
+        minHeap.pop();
+        minHeap.push(new HuffmanNode(nextNodeId++, leftChild, rightChild));
+    }
+
+    HuffmanNode *root = minHeap.top();
+    string path;
+    buildCodesFromTree(root, path, result.codes);
+    captureTree(root, result.codes, result.treeNodes, result.treeEdges);
+
+    size_t estimatedBits = 0;
+    for (const auto &entry : result.frequencies)
+    {
+        auto it = result.codes.find(entry.first);
+        if (it != result.codes.end())
+        {
+            estimatedBits += static_cast<size_t>(entry.second) * it->second.size();
+        }
+    }
+
+    result.encodedDNA.reserve(estimatedBits);
+
+    for (char symbol : dna)
+    {
+        result.encodedDNA += result.codes.at(symbol);
+    }
+
+    result.totalSymbols = dna.size();
+    result.originalBits = result.totalSymbols * 8;
+    result.compressedBits = result.encodedDNA.size();
+    if (result.originalBits > 0)
+    {
+        result.savingsPercent = (1.0 - (double)result.compressedBits / result.originalBits) * 100.0;
+    }
+
+    destroyTree(root);
+    return result;
+}
+
+// Time: O(k log k + n), Space: O(k)
+void printHuffmanReport(const HuffmanResult &result, ostream &out)
+{
+    if (result.frequencies.empty())
+    {
+        out << "No DNA available for compression.\n";
+        return;
+    }
+
+    vector<pair<char, string>> sortedCodes(result.codes.begin(), result.codes.end());
+    sort(sortedCodes.begin(), sortedCodes.end());
+
+    out << "Huffman Codes:\n";
+    for (const auto &entry : sortedCodes)
+    {
+        out << entry.first << " -> " << entry.second << "\n";
+    }
+
+    out << "Encoded DNA:\n"
+        << result.encodedDNA << "\n";
+
+    out << "Huffman Tree Nodes:\n";
+    vector<HuffmanResult::TreeNode> sortedNodes = result.treeNodes;
+    sort(sortedNodes.begin(), sortedNodes.end(), [](const HuffmanResult::TreeNode &a, const HuffmanResult::TreeNode &b)
+         { return a.id < b.id; });
+
+    for (const auto &node : sortedNodes)
+    {
+        out << "Node " << node.id << ": ";
+        if (node.symbol != 0)
+        {
+            out << node.symbol;
+        }
+        else
+        {
+            out << "internal";
+        }
+
+        out << ", freq=" << node.frequency;
+        if (!node.code.empty())
+        {
+            out << ", code=" << node.code;
+        }
+        if (node.leftId != -1)
+        {
+            out << ", left=" << node.leftId;
+        }
+        if (node.rightId != -1)
+        {
+            out << ", right=" << node.rightId;
+        }
+        out << "\n";
+    }
+
+    out << "Huffman Tree Edges:\n";
+    vector<HuffmanResult::TreeEdge> sortedEdges = result.treeEdges;
+    sort(sortedEdges.begin(), sortedEdges.end(), [](const HuffmanResult::TreeEdge &a, const HuffmanResult::TreeEdge &b)
+         {
+        if (a.fromId != b.fromId) return a.fromId < b.fromId;
+        if (a.bit != b.bit) return a.bit < b.bit;
+        return a.toId < b.toId; });
+
+    for (const auto &edge : sortedEdges)
+    {
+        out << edge.fromId << " -" << edge.bit << "-> " << edge.toId << "\n";
+    }
+
+    out << "Original size (ASCII bits): " << result.originalBits << "\n";
+    out << "Compressed size (Huffman bits): " << result.compressedBits << "\n";
+
+    if (result.originalBits > 0)
+    {
+        out << "Savings vs ASCII: " << fixed << setprecision(2) << result.savingsPercent << "%\n";
+    }
+}
+
+
+
+
+==================== FILE: .\cpp\features\huffman\huffman.h ====================
+
+#ifndef HUFFMAN_H
+#define HUFFMAN_H
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct HuffmanResult
+{
+    unordered_map<char, string> codes;
+    string encodedDNA;
+    unordered_map<char, int> frequencies;
+    int totalSymbols = 0;
+    int originalBits = 0;
+    int compressedBits = 0;
+    double savingsPercent = 0.0;
+
+    struct TreeNode
+    {
+        int id = 0;
+        int frequency = 0;
+        char symbol = 0;
+        string code;
+        int leftId = -1;
+        int rightId = -1;
+    };
+
+    struct TreeEdge
+    {
+        int fromId = 0;
+        int toId = 0;
+        char bit = '0';
+    };
+
+    vector<TreeNode> treeNodes;
+    vector<TreeEdge> treeEdges;
+};
+
+HuffmanResult compressDNAHuffman(const string &dna);
+void printHuffmanReport(const HuffmanResult &result, ostream &out);
+
+#endif
+
+
+
+
+==================== FILE: .\cpp\features\z\z_module.cpp ====================
+
+#include "z_module.h"
+#include <bits/stdc++.h>
+
+using namespace std;
+
+// Time: O(n), Space: O(n)
+vector<int> computeZArray(const string &s)
+{
+    int n = s.size();
+    vector<int> z(n, 0);
+    int l = 0, r = 0;
+
+    for (int i = 1; i < n; i++)
+    {
+        if (i <= r)
+        {
+            z[i] = min(r - i + 1, z[i - l]);
+        }
+
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]])
+        {
+            z[i]++;
+        }
+
+        if (i + z[i] - 1 > r)
+        {
+            l = i;
+            r = i + z[i] - 1;
+        }
+    }
+
+    return z;
+}
+
+// Time: O(n + m), Space: O(n + m)
+vector<int> findExactMatchesZ(const string &text, const string &pattern)
+{
+    vector<int> ans;
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
+    {
+        return ans;
+    }
+
+    int m = pattern.size();
+    string joined;
+    joined.reserve(pattern.size() + 1 + text.size());
+    joined += pattern;
+    joined.push_back('$');
+    joined += text;
+    vector<int> z = computeZArray(joined);
+
+    for (int i = m + 1; i < (int)joined.size(); i++)
+    {
+        if (z[i] >= m)
+        {
+            ans.push_back(i - m - 1);
+        }
+    }
+
+    return ans;
+}
+
+// Time: O(n + m), Space: O(n + m)
+static vector<int> prefixMatches(const string &text, const string &pattern)
+{
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
+    {
+        return {};
+    }
+
+    vector<int> pref(text.size(), 0);
+    int m = pattern.size();
+    string joined;
+    joined.reserve(pattern.size() + 1 + text.size());
+    joined += pattern;
+    joined.push_back('$');
+    joined += text;
+    vector<int> z = computeZArray(joined);
+
+    for (int i = 0; i < (int)text.size(); i++)
+    {
+        pref[i] = min(z[m + 1 + i], m);
+    }
+    return pref;
+}
+
+// Time: O(n + m), Space: O(n + m)
+static vector<int> suffixMatches(const string &text, const string &pattern)
+{
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
+    {
+        return {};
+    }
+
+    vector<int> suff(text.size(), 0);
+    int n = text.size();
+    int m = pattern.size();
+    string revPattern(pattern.rbegin(), pattern.rend());
+    string revText(text.rbegin(), text.rend());
+    string joined;
+    joined.reserve(revPattern.size() + 1 + revText.size());
+    joined += revPattern;
+    joined.push_back('$');
+    joined += revText;
+    vector<int> z = computeZArray(joined);
+
+    for (int i = 0; i + m <= n; i++)
+    {
+        int revIndex = n - (i + m);
+        suff[i] = min(z[m + 1 + revIndex], m);
+    }
+    return suff;
+}
+
+// Time: O(n + m), Space: O(n)
+vector<int> findApproxCandidateIndicesZ(
+    const string &text,
+    const string &pattern,
+    int maxMismatches)
+{
+    vector<int> ans;
+    if (pattern.empty() || text.empty() || pattern.size() > text.size())
+    {
+        return ans;
+    }
+
+    int n = text.size();
+    int m = pattern.size();
+    maxMismatches = max(0, maxMismatches);
+
+    vector<int> pref = prefixMatches(text, pattern);
+    vector<int> suff = suffixMatches(text, pattern);
+
+    for (int i = 0; i + m <= n; i++)
+    {
+        int matched = min(m, pref[i] + suff[i]);
+        if (matched >= m - maxMismatches)
+        {
+            ans.push_back(i);
+        }
+    }
+
+    return ans;
+}
+
+
+
+
+==================== FILE: .\cpp\features\z\z_module.h ====================
+
+#ifndef Z_MODULE_H
+#define Z_MODULE_H
+
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> computeZArray(const string &s);
+vector<int> findExactMatchesZ(const string &text, const string &pattern);
+vector<int> findApproxCandidateIndicesZ(
+    const string &text,
+    const string &pattern,
+    int maxMismatches);
+
+#endif
+
+
+
